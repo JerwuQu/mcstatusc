@@ -7,12 +7,13 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#define DEFAULT_PORT 25565
 #define MAX_RESP_SIZE 131072
 
 int main(int argc, char** argv)
 {
-	if (argc != 3) {
-		fprintf(stderr, "%s <hostname> <port>\n", argv[0]);
+	if (argc < 2 || argc > 3) {
+		fprintf(stderr, "%s <hostname> [port]\n", argv[0]);
 		return 1;
 	}
 
@@ -28,7 +29,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	int portnum = atoi(argv[2]);
+	int portnum = argc == 3 ? atoi(argv[2]) : DEFAULT_PORT;
 	if (portnum <= 0 || portnum > 65535) {
 		fprintf(stderr, "Invalid port number\n");
 		return 1;
