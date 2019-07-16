@@ -1,11 +1,27 @@
 #include <stdio.h>
-#include <netdb.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
+
+#ifdef _WIN32
+	#ifndef _WIN32_WINNT
+		#define _WIN32_WINNT 0x0501 // WinXP
+	#endif // _WIN32_WINNT
+
+	#include <winsock2.h>
+	#include <Ws2tcpip.h>
+
+	typedef SOCKET SOCKET_INT;
+	#define SOCKET_OPEN_FAILED(fd) (fd == INVALID_SOCKET)
+#else
+	#include <netdb.h>
+	#include <unistd.h>
+	#include <arpa/inet.h>
+	#include <sys/socket.h>
+
+	typedef int SOCKET_INT;
+	#define SOCKET_OPEN_FAILED(fd) (fd < 0)
+#endif // _WIN32
 
 #define DEFAULT_PORT 25565
 #define MAX_RESP_SIZE 131072
@@ -17,8 +33,16 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd < 0) {
+	#ifdef _WIN32
+		WSADATA wsa_data;
+		if (WSAStartup(MAKEWORD(1, 1), &wsa_data)) {
+			fprintf(stderr, "Windows socket init failed\n");
+			return 1;
+		}
+	#endif //_WIN32
+
+	SOCKET_INT sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (SOCKET_OPEN_FAILED(sockfd)) {
 		fprintf(stderr, "Failed to open socket\n");
 		return 1;
 	}
@@ -82,6 +106,12 @@ int main(int argc, char** argv)
 	// Print response string
 	printf("%.*s\n", resp_str_len, response + i);
 
-	close(sockfd);
+	#ifdef _WIN32
+		closesocket(sockfd);
+		WSACleanup();
+	#else
+		close(sockfd);
+	#endif // _WIN32
+
 	return 0;
 }
