@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 
 #define MAX_RESP_SIZE 131072
