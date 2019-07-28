@@ -49,7 +49,7 @@ int main(int argc, char** argv)
 
 	struct hostent* host = gethostbyname(argv[1]);
 	if (host == 0) {
-		fprintf(stderr, "Failed to get host\n");
+		fprintf(stderr, "Failed to find hostname\n");
 		return 1;
 	}
 
@@ -69,42 +69,63 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	// Handshake packet and Request packet (https://wiki.vg/Server_List_Ping)
+	// Send Handshake packet and Request packet (https://wiki.vg/Server_List_Ping)
 	send(sockfd, "\x06\x00\x00\x00\x00\x00\x01\x01\x00", 9, 0);
 
-	// Response
+	// Response - Get packet length (https://wiki.vg/Protocol#Packet_format)
 	static char response[MAX_RESP_SIZE];
-	int resp_size = recv(sockfd, response, MAX_RESP_SIZE, 0);
-	if (resp_size < 0) {
-		fprintf(stderr, "Failed to get response\n");
+	int resp_size = 0;
+	do {
+		int got = recv(sockfd, response + resp_size, 1, 0); // One byte at a time, todo: optimize?
+		if (got != 1) {
+			fprintf(stderr, "Failed to get packet length\n");
+			return 1;
+		}
+	} while (response[resp_size++] & 0x80); // Check if last byte of VarInt
+
+	// Packet length
+	int packet_length = 0;
+	for (int i = 0; i < resp_size; i++) {
+		packet_length |= (response[i] & 0x7f) << (7 * i);
+	}
+
+	if (packet_length < 2) { // 1 for ID, 1 for string length
+		fprintf(stderr, "Invalid packet length\n");
 		return 1;
 	}
 
-	// Packet length
-	int i = 0, packet_length = 0;
-	do {
-		packet_length |= (response[i] & 0x7f) << (7 * i);
-	} while (response[i++] & 0x80);
-	const int packet_length_i = i;
+	// Response - Get packet data
+	resp_size = 0; // Reset response buffer for packet data
+	while (resp_size < packet_length) {
+		int got = recv(sockfd, response + resp_size, MAX_RESP_SIZE - resp_size, 0);
+		resp_size += got;
+		if (got < 0) {
+			fprintf(stderr, "Failed to get packet data\n");
+			return 1;
+		}
+	}
 
 	// Packet ID
-	if (response[i++] != 0x00) {
+	if (response[0] != 0x00) {
 		fprintf(stderr, "Invalid response packet ID\n");
 		return 1;
 	}
 
-	// Skip packet string length
-	while (response[i++] & 0x80);
+	// Read string length
+	int str_len = 0;
+	int i = 1; // Skip packet ID byte
+	do {
+		str_len |= (response[i] & 0x7f) << (7 * (i - 1));
+	} while (response[i++] & 0x80);
 
-	// Calculate response string length
-	uint32_t resp_str_len = packet_length + packet_length_i - i;
-	if (resp_str_len + i > resp_size) {
-		fprintf(stderr, "Invalid response packet size\n");
+	// Verify
+	if (str_len < 0 || str_len > resp_size - i) {
+		fprintf(stderr, "Invalid response string length\n");
 		return 1;
 	}
 
 	// Print response string
-	printf("%.*s\n", resp_str_len, response + i);
+	printf("%.*s\n", str_len, response + i);
 
 	#ifdef _WIN32
 		closesocket(sockfd);
