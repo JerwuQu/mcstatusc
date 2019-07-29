@@ -111,21 +111,12 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	// Read string length
-	int str_len = 0;
+	// Skip somewhat redundant string length - it's in utf8 chars, not bytes
 	int i = 1; // Skip packet ID byte
-	do {
-		str_len |= (response[i] & 0x7f) << (7 * (i - 1));
-	} while (response[i++] & 0x80);
-
-	// Verify
-	if (str_len < 0 || str_len > resp_size - i) {
-		fprintf(stderr, "Invalid response string length\n");
-		return 1;
-	}
+	while (i < resp_size && response[i++] & 0x80);
 
 	// Print response string
-	printf("%.*s\n", str_len, response + i);
+	printf("%.*s\n", resp_size - i, response + i);
 
 	#ifdef _WIN32
 		closesocket(sockfd);
