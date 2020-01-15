@@ -94,7 +94,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	// Send landshake packet and Request packet
+	// Send Handshake packet and Request packet
 	// https://wiki.vg/Server_List_Ping
 	const unsigned char packets[9] = {6, 0, 0, 0, 0, 0, 1, 1, 0};
 	send(sockfd, packets, sizeof(packets), 0);
