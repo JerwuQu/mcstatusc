@@ -155,6 +155,12 @@ int main(int argc, char** argv)
 	}
 	respIt += bread;
 
+	// Make sure string length is reasonable
+	if (jsonStrLen > respSize - respIt) {
+		fprintf(stderr, "Invalid string length in response\n");
+		return 1;
+	}
+
 	// Print response string
 	printf("%.*s\n", (int)jsonStrLen, respBuf + respIt);
 
