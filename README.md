@@ -45,7 +45,7 @@ A binary is built for each commit [on AppVeyor](https://ci.appveyor.com/project/
 Build it. See below.
 
 # Building on Linux
-- Install `gcc` for your distribution. Aliasing `clang` or `tcc` to `gcc` also works 🤷‍♂️
+- Install `gcc` for your distribution
 - Run `make`
 
 # Building on Windows

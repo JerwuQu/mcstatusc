@@ -24,7 +24,32 @@
 #endif // _WIN32
 
 #define DEFAULT_PORT 25565
-#define MAX_RESP_SIZE 131072
+
+#define MAX_VARINT_SIZE 5
+#define MAX_STRING_SIZE (32767 * 4 + 3)
+
+// Packet Length + Packet Id + String Length + String
+#define MAX_RESP_SIZE (MAX_VARINT_SIZE * 3 + MAX_STRING_SIZE)
+
+#define VARINT_NEED_MORE_DATA -1
+#define VARINT_INVALID -2
+
+// Read VarInt from buffer - returns amount of bytes read on success
+// https://wiki.vg/Protocol#VarInt_and_VarLong
+int readVarInt(unsigned char* buf, ssize_t len, ssize_t* numOut) {
+	ssize_t i = -1, num = 0;
+	do {
+		i++;
+		if (i >= 5)
+			return VARINT_INVALID;
+		else if (i >= len)
+			return VARINT_NEED_MORE_DATA;
+
+		num |= (buf[i] & 0x7f) << (7 * i);
+	} while (buf[i] & 0x80);
+	*numOut = num;
+	return i + 1;
+}
 
 int main(int argc, char** argv)
 {
@@ -69,54 +94,69 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	// Send Handshake packet and Request packet (https://wiki.vg/Server_List_Ping)
-	send(sockfd, "\x06\x00\x00\x00\x00\x00\x01\x01\x00", 9, 0);
+	// Send landshake packet and Request packet
+	// https://wiki.vg/Server_List_Ping
+	const unsigned char packets[9] = {6, 0, 0, 0, 0, 0, 1, 1, 0};
+	send(sockfd, packets, sizeof(packets), 0);
 
-	// Response - Get packet length (https://wiki.vg/Protocol#Packet_format)
-	static char response[MAX_RESP_SIZE];
-	int resp_size = 0;
-	do {
-		int got = recv(sockfd, response + resp_size, 1, 0); // One byte at a time, todo: optimize?
-		if (got != 1) {
-			fprintf(stderr, "Failed to get packet length\n");
+	static unsigned char respBuf[MAX_RESP_SIZE];
+	ssize_t respIt = 0, respSize = 0;
+
+	// Receive response packet length
+	// https://wiki.vg/Protocol#Packet_format
+	ssize_t packetLength;
+	while (1) {
+		ssize_t got = recv(sockfd, respBuf + respSize, MAX_RESP_SIZE - respSize, 0);
+		if (got < 0) {
+			fprintf(stderr, "Failed to get packet length (no response)\n");
 			return 1;
+		} else if (got > 0) {
+			respSize += got;
+			int bread = readVarInt(respBuf, respSize, &packetLength);
+			if (bread > 0) {
+				respIt += bread;
+				break;
+			} else if (bread == VARINT_INVALID) {
+				fprintf(stderr, "Failed to get packet length (corrupt)\n");
+				return 1;
+			}
 		}
-	} while (response[resp_size++] & 0x80); // Check if last byte of VarInt
-
-	// Packet length
-	int packet_length = 0;
-	for (int i = 0; i < resp_size; i++) {
-		packet_length |= (response[i] & 0x7f) << (7 * i);
 	}
 
-	if (packet_length < 2) { // 1 for ID, 1 for string length
+	// Packet length
+	if (packetLength < 2) { // 1 for ID, 1 for string length
 		fprintf(stderr, "Invalid packet length\n");
 		return 1;
 	}
 
-	// Response - Get packet data
-	resp_size = 0; // Reset response buffer for packet data
-	while (resp_size < packet_length) {
-		int got = recv(sockfd, response + resp_size, MAX_RESP_SIZE - resp_size, 0);
-		resp_size += got;
+	// Receive rest of packet
+	while (respSize - respIt < packetLength) {
+		ssize_t got = recv(sockfd, respBuf + respSize, MAX_RESP_SIZE - respSize, 0);
 		if (got < 0) {
-			fprintf(stderr, "Failed to get packet data\n");
+			fprintf(stderr, "Failed to get packet data (no response)\n");
 			return 1;
 		}
+		respSize += got;
 	}
 
 	// Packet ID
-	if (response[0] != 0x00) {
+	if (respBuf[respIt] != 0x00) {
 		fprintf(stderr, "Invalid response packet ID\n");
 		return 1;
 	}
+	respIt++;
 
-	// Skip somewhat redundant string length - it's in utf8 chars, not bytes
-	int i = 1; // Skip packet ID byte
-	while (i < resp_size && response[i++] & 0x80);
+	// Get JSON response string length
+	ssize_t jsonStrLen = 0;
+	int bread = readVarInt(respBuf + respIt, respSize - respIt, &jsonStrLen);
+	if (bread < 0) {
+		fprintf(stderr, "Invalid string length in response\n");
+		return 1;
+	}
+	respIt += bread;
 
 	// Print response string
-	printf("%.*s\n", resp_size - i, response + i);
+	printf("%.*s\n", (int)jsonStrLen, respBuf + respIt);
 
 	#ifdef _WIN32
 		closesocket(sockfd);

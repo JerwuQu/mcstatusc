@@ -1,7 +1,8 @@
-.PHONY: clean
+CC=gcc
 
 mcstatusc: mcstatusc.c
-	gcc mcstatusc.c -std=c99 -pedantic -Wall -Werror -O2 -omcstatusc
+	$(CC) $^ -std=c99 -pedantic -Wall -Wextra -Werror -O2 -o$@
 
+.PHONY: clean
 clean:
 	rm mcstatusc
