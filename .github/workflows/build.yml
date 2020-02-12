@@ -1,0 +1,39 @@
+name: Build
+on: [push]
+jobs:
+  ubuntu_build:
+    name: Linux build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v1
+    - name: Make
+      run: make
+    - name: Upload artifact
+      uses: actions/upload-artifact@master
+      with:
+        name: mcstatusc_linux
+        path: mcstatusc
+  windows_build:
+    name: Windows build
+    runs-on: windows-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v1
+    - name: Get TCC and WinAPI headers
+      run: |
+        Invoke-WebRequest -OutFile tcc.zip https://download.savannah.gnu.org/releases/tinycc/tcc-0.9.27-win32-bin.zip
+        Expand-Archive -DestinationPath . tcc.zip
+
+        Invoke-WebRequest -OutFile tcc-winapi.zip https://download.savannah.gnu.org/releases/tinycc/winapi-full-for-0.9.27.zip
+        Expand-Archive tcc-winapi.zip
+        Copy-Item -Force -Recurse tcc-winapi/*/* tcc/
+
+        echo "::add-path::$(Resolve-Path -Path tcc | Select -ExpandProperty Path)"
+    - name: Build
+      run: ./make.bat
+    - name: Upload artifact
+      uses: actions/upload-artifact@master
+      with:
+        name: mcstatusc_windows
+        path: mcstatusc.exe

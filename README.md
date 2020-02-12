@@ -1,7 +1,7 @@
 # mcstatusc
 Minecraft Server Status thingy
 
-[![Build status](https://ci.appveyor.com/api/projects/status/g9gjuf6fk3fxsgk1?svg=true)](https://ci.appveyor.com/project/JerwuQu/mcstatusc)
+![Build](https://github.com/JerwuQu/mcstatusc/workflows/Build/badge.svg?branch=master)
 
 # Why?
 I was previously using [Dinnerbone's mcstatus](https://github.com/dinnerbone/mcstatus) but it was quite slow, especially in Termux on my phone, taking multiple *seconds* to simply get the status... so here we are, and now it's fast.
@@ -39,7 +39,7 @@ $ mcstatusc 127.0.0.1 | jq
 I supplied a `PKGBUILD` in this repo for now. If this ever gets more than 0 users, I'll try to throw it onto the AUR.
 
 ## Windows
-A binary is built for each commit [on AppVeyor](https://ci.appveyor.com/project/JerwuQu/mcstatusc/build/artifacts).
+A binary is built for each commit by [Github Actions](https://github.com/JerwuQu/mcstatusc/actions?query=is%3Asuccess+branch%3Amaster).
 
 ## Others
 Build it. See below.
