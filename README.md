@@ -7,7 +7,7 @@ Minecraft Server Status thingy
 I was previously using [Dinnerbone's mcstatus](https://github.com/dinnerbone/mcstatus) but it was quite slow, especially in Termux on my phone, taking multiple *seconds* to simply get the status... so here we are, and now it's fast.
 
 # Usage
-`mcstatusc <hostname> [port]`
+`mcstatusc <hostname> [port] [protocol version]`
 
 ## Example
 ```
