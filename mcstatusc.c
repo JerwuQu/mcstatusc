@@ -199,7 +199,8 @@ static inline void printReceiveResponse(const sock_handle_t sockfd)
 int main(int argc, char **argv)
 {
 	if (argc < 2 || argc > 4) {
-		err("%s <hostname> [port] [protocol version]", argv[0]);
+		fprintf(stderr, "USAGE: %s <hostname> [port] [protocol version]\n", argv[0]);
+		return 1;
 	}
 
 	const char *hostname = argv[1];
