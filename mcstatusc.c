@@ -87,11 +87,16 @@ static inline size_t writeVarInt(int32_t value, uint8_t *buf) {
 	return i;
 }
 
-static inline void failsafeSend(sock_handle_t sockfd, const void *buf, ssize_t sz)
+static inline void failsafeSend(sock_handle_t sockfd, const uint8_t *buf, size_t sz)
 {
-	if (send(sockfd, buf, sz, 0) != sz) {
-		err("failed to send data");
-	}
+	size_t totalSent = 0;
+	do {
+		const ssize_t bytesSent = send(sockfd, buf + totalSent, sz - totalSent, 0);
+		if (bytesSent < 0) {
+			err("failed to send data");
+		}
+		totalSent += bytesSent;
+	} while (totalSent < sz);
 }
 
 // https://wiki.vg/Server_List_Ping
